@@ -64,11 +64,47 @@ sed -i '/<ViewStub/{N;N;N;N;N;N; /optional_button_stub/a\
 }' chrome/browser/ui/android/toolbar/java/res/layout/toolbar_phone.xml
 sed -i 's/extension_toolbar_baseline_width">600dp/extension_toolbar_baseline_width">0dp/' chrome/browser/ui/android/extensions/java/res/values/dimens.xml
 
-# 3. Sneptuob branding in strings (replace Chrome with Sneptuob in user-visible strings)
+# 3. Sneptuob branding in strings
 sed -i 's/app_name">Chromium/app_name">Sneptuob/' chrome/android/java/res/values/channel_constants.xml 2>/dev/null || true
 sed -i 's/app_name">Chrome/app_name">Sneptuob/' chrome/android/java/res/values/channel_constants.xml 2>/dev/null || true
 
-# 4. Apply Sneptuob custom patches if they exist
+# 4. Generate Sneptuob launcher icons (S with gradient)
+python3 $SCRIPT_DIR/generate_icons.py .
+
+# 5. iOS-inspired color theme
+# Toolbar & primary colors - clean white/light gray like Safari
+for f in chrome/android/java/res/values/colors.xml chrome/browser/ui/android/theme/java/res/values/colors.xml; do
+    if [ -f "$f" ]; then
+        # Light mode: white toolbar, blue accents (iOS system blue)
+        sed -i 's|"default_bg_color">#[0-9A-Fa-f]\{6\}|"default_bg_color">#FFFFFF|g' "$f" 2>/dev/null || true
+        sed -i 's|"default_bg_color_dark">#[0-9A-Fa-f]\{6\}|"default_bg_color_dark">#1C1C1E|g' "$f" 2>/dev/null || true
+        sed -i 's|"default_text_color_link">#[0-9A-Fa-f]\{6\}|"default_text_color_link">#007AFF|g' "$f" 2>/dev/null || true
+    fi
+done
+
+# Override toolbar colors in theme files
+for f in $(find chrome/android/java/res/values components/browser_ui/theme/android/java/res/values -name 'colors.xml' -o -name 'themes.xml' 2>/dev/null); do
+    if [ -f "$f" ]; then
+        # iOS blue accent color
+        sed -i 's|"default_control_color_active">#[0-9A-Fa-f]\{6\}|"default_control_color_active">#007AFF|g' "$f" 2>/dev/null || true
+    fi
+done
+
+# Dark mode: iOS-style pure black background
+for f in $(find chrome/android/java/res/values-night -name 'colors.xml' 2>/dev/null); do
+    if [ -f "$f" ]; then
+        sed -i 's|"default_bg_color">#[0-9A-Fa-f]\{6\}|"default_bg_color">#000000|g' "$f" 2>/dev/null || true
+    fi
+done
+
+# UI color palette - iOS system colors
+PALETTE_FILE="ui/android/java/res/values/color_palette.xml"
+if [ -f "$PALETTE_FILE" ]; then
+    # iOS blue for interactive elements
+    sed -i 's|"default_icon_color_blue">#[0-9A-Fa-f]\{6\}|"default_icon_color_blue">#007AFF|g' "$PALETTE_FILE" 2>/dev/null || true
+fi
+
+# 7. Apply Sneptuob custom patches if they exist
 if [ -d "$SCRIPT_DIR/patches" ]; then
     for patch in $SCRIPT_DIR/patches/*.patch; do
         if [ -f "$patch" ]; then
